@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><span style="color: gold;">Narrador Hórus Audiobook 🎤</span></title>
+    <!-- Bibliotecas para leitura de PDF e OCR -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.1/dist/tesseract.min.js"></script>
+
+    <style>
+        body {
+            background-color: black;
+            color: #d3d3d3;
+            font-family: Arial, sans-serif;
+        }
+        h1, label {
+            color: #d3d3d3;
+        }
+        button, a {
+            background-color: #333;
+            color: #d3d3d3;
+            border: none;
+            padding: 10px 20px;
+            margin-top: 10px;
+            cursor: pointer;
+            display: inline-block;
+            text-decoration: none;
+        }
+        .editable {
+            background-color: #333;
+            color: #d3d3d3;
+            border: none;
+            padding: 5px;
+            margin-top: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            min-height: 200px;
+            outline: none;
+        }
+        .highlight {
+            background-color: yellow;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <h1><span style="color: gold;">Narrador Hórus Audiobook 🎤</span></h1>
+    <div id="editableText" class="editable" contenteditable="true" oninput="syncAndHighlight()"></div><br>
+    <label for="fontSizeSelect">Tamanho da Fonte:</label>
+    <select id="fontSizeSelect">
+        <option value="12">12px</option>
+        <option value="14">14px</option>
+        <option value="16">16px</option>
+        <option value="18">18px</option>
+        <option value="20">20px</option>
+    </select><br>
+    <label for="voiceSelect">Selecione a Voz:</label>
+    <select id="voiceSelect">
+        <!-- Adicionando vozes específicas manualmente -->
+        <option value="Microsoft Thalita Online (Natural) - Portuguese (Brazil)">Microsoft Thalita Online (Natural) - Portuguese (Brazil)</option>
+        <option value="Microsoft Antonio Online (Natural) - Portuguese (Brazil)">Microsoft Antonio Online (Natural) - Portuguese (Brazil)</option>
+        <option value="Microsoft Francisca Online (Natural) - Portuguese (Brazil)">Microsoft Francisca Online (Natural) - Portuguese (Brazil)</option>
+        <option value="Microsoft FlorianMultilingual Online (Natural) - German (Germany)">Microsoft FlorianMultilingual Online (Natural) - German (Germany)</option>
+        <option value="Microsoft SeraphinaMultilingual Online (Natural) - German (Germany)">Microsoft SeraphinaMultilingual Online (Natural) - German (Germany)</option>
+        <option value="Microsoft VivienneMultilingual Online (Natural) - French (France)">Microsoft VivienneMultilingual Online (Natural) - French (France)</option>
+        <option value="Microsoft RemyMultilingual Online (Natural) - French (France)">Microsoft RemyMultilingual Online (Natural) - French (France)</option>
+    </select><br>
+    <label for="speed">Velocidade:</label>
+    <input type="range" id="speed" min="0.5" max="2" step="0.1" value="1"><br>
+    <label for="pitch">Tom:</label>
+    <input type="range" id="pitch" min="0.5" max="2" step="0.1" value="1"><br>
+    <label for="volume">Volume:</label>
+    <input type="range" id="volume" min="0" max="1" step="0.1" value="1"><br>
+    <button id="startBtn">Iniciar</button>
+    <button id="stopBtn">Parar</button><br>
+    <button id="clearBtn">Limpar Texto</button>
+    <button id="saveBtn">Salvar Texto</button>
+    <input type="file" id="loadFile" style="display:none" />
+    <button id="loadBtn" onclick="document.getElementById('loadFile').click();">Carregar Texto</button><br>
+    <!-- Botão para carregar PDF ou Imagem -->
+    <input type="file" id="loadPDF" accept=".pdf, image/*" style="display:none" />
+    <button id="loadPDFBtn" onclick="document.getElementById('loadPDF').click();">Carregar PDF/Imagem</button>
+    <button id="findBtn">Localizar</button>
+    <a href="https://www.youtube.com/channel/UCBqXxS97ce5IL8ajoiML6Pg?sub_confirmation=1" target="_blank">Acessar meu canal no YouTube</a>
+    <p>Desenvolvido por Alessàndrho Peréira</p>
+
+    <script>
+        // Detecta PDF ou Imagem e executa a extração
+document.getElementById('loadPDF').addEventListener('change', function(event) {
+    let file = event.target.files[0];
+    if (file) {
+        if (file.type === "application/pdf") {
+            extractTextFromPDF(file);
+        } else if (file.type.startsWith("image/")) {
+            extractTextFromImage(file);
+        } else {
+            alert("Formato não suportado. Carregue um PDF ou uma imagem.");
+        }
+    }
+});
+
+// Função para extrair texto de PDFs
+function extractTextFromPDF(file) {
+    let reader = new FileReader();
+    reader.onload = function() {
+        let typedarray = new Uint8Array(this.result);
+        pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+            let totalText = "";
+            let maxPages = pdf.numPages;
+            let countPromises = [];
+            for (let j = 1; j <= maxPages; j++) {
+                countPromises.push(
+                    pdf.getPage(j).then(function(page) {
+                        return page.getTextContent().then(function(textContent) {
+                            return textContent.items.map(item => item.str).join(' ');
+                        });
+                    })
+                );
+            }
+            Promise.all(countPromises).then(function(pagesText) {
+                totalText = pagesText.join('\n');
+                document.getElementById('editableText').innerText = totalText;
+            });
+        });
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+// Função para extrair texto de Imagens (OCR)
+function extractTextFromImage(file) {
+    Tesseract.recognize(
+        file,
+        'por',  // Português
+        { logger: m => console.log(m) }
+    ).then(({ data: { text } }) => {
+        document.getElementById('editableText').innerText = text;
+    }).catch(err => {
+        console.error(err);
+        alert("Erro ao processar a imagem.");
+    });
+}
+
+        window.onload = function() {
+            let synth = window.speechSynthesis;
+            let voices = [];
+
+            function populateVoiceList() {
+                voices = synth.getVoices();
+                let voiceSelect = document.getElementById('voiceSelect');
+                voiceSelect.innerHTML = ''; // Limpar opções existentes
+
+                // Adicionar vozes específicas detectadas automaticamente
+                voices.forEach(function(voice, index) {
+                    if (voice.name.includes("Microsoft Andrew") ||
+                        voice.name.includes("Microsoft Brian") ||
+                        voice.name.includes("Microsoft Thalita Online") ||
+                        voice.name.includes("Microsoft Antonio Online") ||
+                        voice.name.includes("Microsoft Francisca Online") ||
+                        voice.name.includes("Microsoft FlorianMultilingual Online") ||
+                        voice.name.includes("Microsoft SeraphinaMultilingual Online") ||
+                        voice.name.includes("Microsoft VivienneMultilingual Online") ||
+                        voice.name.includes("Microsoft RemyMultilingual Online")) {
+                        let option = document.createElement('option');
+                        option.textContent = voice.name;
+                        option.setAttribute('data-lang', voice.lang);
+                        option.setAttribute('data-index', index);
+                        voiceSelect.appendChild(option);
+                    }
+                });
+
+                // Adicionar vozes específicas manualmente
+                const manualVoices = [
+                    "Microsoft Thalita Online (Natural) - Portuguese (Brazil)",
+                    "Microsoft Antonio Online (Natural) - Portuguese (Brazil)",
+                    "Microsoft Francisca Online (Natural) - Portuguese (Brazil)",
+                    "Microsoft FlorianMultilingual Online (Natural) - German (Germany)",
+                    "Microsoft SeraphinaMultilingual Online (Natural) - German (Germany)",
+                    "Microsoft VivienneMultilingual Online (Natural) - French (France)",
+                    "Microsoft RemyMultilingual Online (Natural) - French (France)"
+                ];
+
+                manualVoices.forEach(function(manualVoice) {
+                    let option = document.createElement('option');
+                    option.textContent = manualVoice;
+                    option.setAttribute('data-lang', "manual"); // Marcar como manual
+                    option.setAttribute('data-index', -1); // Indicar que é manual
+                    voiceSelect.appendChild(option);
+                });
+            }
+
+            function loadVoices() {
+                populateVoiceList();
+                if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
+                    speechSynthesis.onvoiceschanged = populateVoiceList;
+                }
+            }
+
+            loadVoices();
+
+            let editableText = document.getElementById('editableText');
+            let speed = document.getElementById('speed');
+            let pitch = document.getElementById('pitch');
+            let volume = document.getElementById('volume');
+            let startBtn = document.getElementById('startBtn');
+            let stopBtn = document.getElementById('stopBtn');
+            let clearBtn = document.getElementById('clearBtn');
+            let saveBtn = document.getElementById('saveBtn');
+            let loadFile = document.getElementById('loadFile');
+            let fontSizeSelect = document.getElementById('fontSizeSelect');
+            let findBtn = document.getElementById('findBtn');
+
+            startBtn.addEventListener('click', function() {
+                let cleanedText = cleanText(editableText.innerText);
+                let utterance = new SpeechSynthesisUtterance(cleanedText);
+                let selectedVoice = voiceSelect.options[voiceSelect.selectedIndex].getAttribute('data-index');
+                
+                // Definir a voz, se a seleção for automática
+                if (selectedVoice !== "-1") {
+                    utterance.voice = voices[selectedVoice];
+                }
+
+                // Configurações de velocidade, tom e volume
+                utterance.rate = speed.value;
+                utterance.pitch = pitch.value;
+                utterance.volume = volume.value;
+
+                // Iniciar a fala
+                synth.speak(utterance);
+            });
+
+            stopBtn.addEventListener('click', function() {
+                synth.cancel();
+            });
+
+            clearBtn.addEventListener('click', function() {
+                editableText.innerHTML = '';
+            });
+
+            saveBtn.addEventListener('click', function() {
+                let blob = new Blob([editableText.innerText], { type: 'text/plain' });
+                let url = URL.createObjectURL(blob);
+                let a = document.createElement('a');
+                a.href = url;
+                a.download = 'texto.txt';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            loadFile.addEventListener('change', function(event) {
+                let file = event.target.files[0];
+                if (file) {
+                    let reader = new FileReader();
+                    reader.onload = function(e) {
+                        editableText.innerText = e.target.result;
+                        syncAndHighlight();
+                    };
+                    reader.readAsText(file);
+                }
+            });
+
+            function cleanText(text) {
+                text = text.replace(/\s+/g, ' ').trim();
+                let sentences = text.split(/\.\s+/);
+                text = sentences.join('.\n');
+                return text;
+            }
+
+            fontSizeSelect.addEventListener('change', function() {
+                let fontSize = fontSizeSelect.value;
+                editableText.style.fontSize = fontSize + 'px';
+            });
+
+            window.syncAndHighlight = function() {
+                let text = editableText.innerText;
+                let highlighted = text.replace(/(\d+|&|\*|)/g, '<span class="highlight">$1</span>');
+                let cursorPos = saveCaretPosition(editableText);
+                editableText.innerHTML = highlighted.replace(/\n/g, '<br>');
+                restoreCaretPosition(editableText, cursorPos);
+            };
+
+            findBtn.addEventListener('click', function() {
+                let searchText = prompt("Digite a palavra ou frase a localizar:");
+                if (searchText) {
+                    let text = editableText.innerHTML;
+                    let searchRegExp = new RegExp(`(${searchText})`, 'gi');
+                    let highlighted = text.replace(searchRegExp, '<span class="highlight">$1</span>');
+                    editableText.innerHTML = highlighted;
+                }
+            });
+
+            function saveCaretPosition(context) {
+                let selection = window.getSelection();
+                let range = selection.getRangeAt(0);
+                let preSelectionRange = range.cloneRange();
+                preSelectionRange.selectNodeContents(context);
+                preSelectionRange.setEnd(range.startContainer, range.startOffset);
+                let start = preSelectionRange.toString().length;
+                return { start: start, end: start + range.toString().length };
+            }
+
+            function restoreCaretPosition(context, savedPos) {
+                let charIndex = 0, range = document.createRange();
+                range.setStart(context, 0);
+                range.collapse(true);
+                let nodeStack = [context], node, foundStart = false, stop = false;
+
+                while (!stop && (node = nodeStack.pop())) {
+                    if (node.nodeType == 3) {
+                        let nextCharIndex = charIndex + node.length;
+                        if (!foundStart && savedPos.start >= charIndex && savedPos.start <= nextCharIndex) {
+                            range.setStart(node, savedPos.start - charIndex);
+                            foundStart = true;
+                        }
+                        if (foundStart && savedPos.end >= charIndex && savedPos.end <= nextCharIndex) {
+                            range.setEnd(node, savedPos.end - charIndex);
+                            stop = true;
+                        }
+                        charIndex = nextCharIndex;
+                    } else {
+                        let i = node.childNodes.length;
+                        while (i--) {
+                            nodeStack.push(node.childNodes[i]);
+                        }
+                    }
+                }
+
+                let sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        };
+    </script>
+</body>
+</html>
